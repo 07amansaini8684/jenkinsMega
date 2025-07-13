@@ -98,11 +98,11 @@ pipeline {
             steps {
                 script {
                     dir('backend') {
-                        docker_build("jenkinsMega-backend", "${params.BACKEND_DOCKER_TAG}", "bluedv")
+                        docker_build("wanderlust-backend-beta", "${params.BACKEND_DOCKER_TAG}", "bluedv")
                     }
 
                     dir('frontend') {
-                        docker_build("jenkinsMega-frontend", "${params.FRONTEND_DOCKER_TAG}", "bluedv")
+                        docker_build("wanderlust-frontend-beta", "${params.FRONTEND_DOCKER_TAG}", "bluedv")
                     }
                 }
             }
@@ -111,8 +111,8 @@ pipeline {
         stage("Docker: Push to DockerHub") {
             steps {
                 script {
-                    docker_push("jenkinsMega-backend", "${params.BACKEND_DOCKER_TAG}", "bluedv") 
-                    docker_push("jenkinsMega-frontend", "${params.FRONTEND_DOCKER_TAG}", "bluedv")
+                    docker_push("wanderlust-backend-beta", "${params.BACKEND_DOCKER_TAG}", "bluedv") 
+                    docker_push("wanderlust-frontend-beta", "${params.FRONTEND_DOCKER_TAG}", "bluedv")
                 }
             }
         }
