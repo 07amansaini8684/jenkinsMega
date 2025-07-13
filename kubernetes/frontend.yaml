@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: bluedv/wanderlust-frontend-beta:v2.2
+          image: bluedv/wanderlust-frontend-beta:v1.0-test
           ports:
             - containerPort: 5173
 ---
