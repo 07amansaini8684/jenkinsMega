@@ -38,10 +38,8 @@ pipeline {
                 script {
                     dir('kubernetes') {
                         sh """
-                            sed -i -e s/wanderlust-backend-beta.*/wanderlust-backend-beta:${params.BACKEND_DOCKER_TAG}/g backend.yaml
-                        """
-                        sh """
-                            sed -i -e s/wanderlust-frontend-beta.*/wanderlust-frontend-beta:${params.FRONTEND_DOCKER_TAG}/g frontend.yaml
+                            sed -i -e 's|wanderlust-backend-beta.*|wanderlust-backend-beta:${params.BACKEND_DOCKER_TAG}|g' backend.yaml
+                            sed -i -e 's|wanderlust-frontend-beta.*|wanderlust-frontend-beta:${params.FRONTEND_DOCKER_TAG}|g' frontend.yaml
                         """
                     }
                 }
@@ -51,19 +49,29 @@ pipeline {
         stage("Git: Code update and push to GitHub") {
             steps {
                 script {
-                    withCredentials([gitUsernamePassword(credentialsId: 'Github-cred', gitToolName: 'Default')]) {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'github-token',
+                        usernameVariable: 'GIT_USER',
+                        passwordVariable: 'GIT_TOKEN'
+                    )]) {
                         sh '''
-                            echo "Checking repository status: "
+                            # Configure Git identity (required)
+                            git config user.email "07amansaini.work@gmail.com"
+                            git config user.name "Jenkins CI"
+                            
+                            # Verify changes
+                            echo "=== Current changes ==="
                             git status
-                        
-                            echo "Adding changes to git: "
+                            echo "=== Modified files diff ==="
+                            git diff --staged || true
+                            
+                            # Commit changes
                             git add .
+                            git commit -m "Updated manifests with tags: FE=${FRONTEND_DOCKER_TAG}, BE=${BACKEND_DOCKER_TAG}"
                             
-                            echo "Committing changes: "
-                            git commit -m "Updated environment variables"
-                            
-                            echo "Pushing changes to GitHub: "
-                            git push https://github.com/07amansaini8684/jenkinsMega.git main
+                            # Push using token authentication
+                            git push https://${GIT_USER}:${GIT_TOKEN}@github.com/07amansaini8684/jenkinsMega.git main
+                            echo "=== Push successful ==="
                         '''
                     }
                 }
@@ -75,47 +83,26 @@ pipeline {
         success {
             script {
                 emailext attachLog: true,
-                from: 'mr.amannobody@gmail.com',
-                subject: "JenkinsMega Application has been updated and deployed - '${currentBuild.result}'",
+                subject: "SUCCESS: JenkinsMega Deployment ${currentBuild.number}",
                 body: """
-                    <html>
-                    <body>
-                        <div style="background-color: #FFA07A; padding: 10px; margin-bottom: 10px;">
-                            <p style="color: black; font-weight: bold;">Project: ${env.JOB_NAME}</p>
-                        </div>
-                        <div style="background-color: #90EE90; padding: 10px; margin-bottom: 10px;">
-                            <p style="color: black; font-weight: bold;">Build Number: ${env.BUILD_NUMBER}</p>
-                        </div>
-                        <div style="background-color: #87CEEB; padding: 10px; margin-bottom: 10px;">
-                            <p style="color: black; font-weight: bold;">URL: ${env.BUILD_URL}</p>
-                        </div>
-                    </body>
-                    </html>
+                    <p>Deployment completed successfully!</p>
+                    <p><b>Frontend Tag:</b> ${params.FRONTEND_DOCKER_TAG}</p>
+                    <p><b>Backend Tag:</b> ${params.BACKEND_DOCKER_TAG}</p>
+                    <p>Build URL: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
                 """,
-                to: 'mr.amannobody@gmail.com, 07amansaini.work@gmail.com',
-                mimeType: 'text/html'
+                to: 'mr.amannobody@gmail.com, 07amansaini.work@gmail.com'
             }
         }
 
         failure {
             script {
                 emailext attachLog: true,
-                from: 'mr.amannobody@gmail.com',
-                subject: "JenkinsMega Application build failed - '${currentBuild.result}'",
+                subject: "FAILED: JenkinsMega Deployment ${currentBuild.number}",
                 body: """
-                    <html>
-                    <body>
-                        <div style="background-color: #FFA07A; padding: 10px; margin-bottom: 10px;">
-                            <p style="color: black; font-weight: bold;">Project: ${env.JOB_NAME}</p>
-                        </div>
-                        <div style="background-color: #90EE90; padding: 10px; margin-bottom: 10px;">
-                            <p style="color: black; font-weight: bold;">Build Number: ${env.BUILD_NUMBER}</p>
-                        </div>
-                    </body>
-                    </html>
+                    <p style="color:red;">Deployment failed!</p>
+                    <p>Check logs: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
                 """,
-                to: 'mr.amannobody@gmail.com, 07amansaini.work@gmail.com',
-                mimeType: 'text/html'
+                to: 'mr.amannobody@gmail.com, 07amansaini.work@gmail.com'
             }
         }
     }
